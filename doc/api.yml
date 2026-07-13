@@ -1,0 +1,51 @@
+paths:
+  /images:
+    post:
+      summary: Soumettre une image (jpeg/png) avec un email
+      operationId: submitImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - email
+              properties:
+                file:
+                  type: string
+                  format: binary
+                email:
+                  type: string
+                  format: email
+      responses:
+        '201':
+          description: Image soumise et enregistrée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageSubmissionResponse'
+        '400':
+          description: Fichier invalide, format non supporté, ou email manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+
+components:
+  schemas:
+    ImageSubmissionResponse:
+      type: object
+      required: [id, submittedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        email:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
