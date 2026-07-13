@@ -4,11 +4,10 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import lombok.AllArgsConstructor;
-import lombok.SneakyThrows;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import school.hei.examen.DTO.ImageSubmissionRequest;
 import school.hei.examen.DTO.ImageSubmissionResponse;
 import school.hei.examen.endpoint.event.EventProducer;
 import school.hei.examen.endpoint.event.model.ImageGrayscaleRequested;
@@ -24,38 +23,45 @@ public class ImageSubmissionService {
   private final ImageSubmissionRepository imageSubmissionRepository;
   private final EventProducer<ImageGrayscaleRequested> eventProducer;
 
-  @SneakyThrows
-  public ImageSubmissionResponse submit(MultipartFile file, String email) {
-    validate(file, email);
+  public ImageSubmissionResponse submit(ImageSubmissionRequest request) {
+    validate(request);
 
     ImageSubmission saved =
         imageSubmissionRepository.save(
-            ImageSubmission.builder().fileName(file.getOriginalFilename()).email(email).build());
+            ImageSubmission.builder()
+                .fileName(request.getFileName())
+                .email(request.getEmail())
+                .build());
 
     eventProducer.accept(
         List.of(
             ImageGrayscaleRequested.builder()
                 .submissionId(saved.getId())
                 .fileName(saved.getFileName())
-                .email(email)
-                .contentType(file.getContentType())
-                .imageBase64(Base64.getEncoder().encodeToString(file.getBytes()))
+                .email(request.getEmail())
+                .contentType(request.getContentType())
+                .imageBase64(request.getFileBase64())
                 .build()));
 
     return toResponse(saved);
   }
 
-  private void validate(MultipartFile file, String email) {
-    if (file == null || file.isEmpty()) {
+  public List<ImageSubmissionResponse> findAll() {
+    return imageSubmissionRepository.findAll().stream().map(this::toResponse).toList();
+  }
+
+  private void validate(ImageSubmissionRequest request) {
+    if (request.getFileBase64() == null || request.getFileBase64().isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le fichier image est requis");
     }
-    String contentType = file.getContentType();
-    if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
+    if (!ALLOWED_CONTENT_TYPES.contains(request.getContentType())) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Seuls les formats JPEG et PNG sont acceptés");
     }
-    if (email == null || email.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "L'email est requis");
+    try {
+      Base64.getDecoder().decode(request.getFileBase64());
+    } catch (IllegalArgumentException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le contenu Base64 est invalide");
     }
   }
 
@@ -66,9 +72,5 @@ public class ImageSubmissionService {
         .email(entity.getEmail())
         .submittedAt(entity.getSubmittedAt())
         .build();
-  }
-
-  public List<ImageSubmissionResponse> findAll() {
-    return imageSubmissionRepository.findAll().stream().map(this::toResponse).toList();
   }
 }
