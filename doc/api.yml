@@ -32,6 +32,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+    get:
+      summary: Lister toutes les images soumises
+      operationId: findAllImages
+      responses:
+        '200':
+          description: Liste des images soumises
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImageSubmissionResponse'
 
 components:
   schemas:

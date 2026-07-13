@@ -67,4 +67,8 @@ public class ImageSubmissionService {
         .submittedAt(entity.getSubmittedAt())
         .build();
   }
+
+  public List<ImageSubmissionResponse> findAll() {
+    return imageSubmissionRepository.findAll().stream().map(this::toResponse).toList();
+  }
 }
